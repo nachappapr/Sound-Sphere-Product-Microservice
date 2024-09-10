@@ -1,13 +1,20 @@
 import { logger } from "@soundspheree/common";
 import { app } from "./app";
+import { initiateBroker, initiateConsumer } from "./utils/broker";
 import { connectDB } from "./utils/connect-db";
 
 // start the servers
 app.listen(3000, async () => {
   logger.info("Product Server is running on port 3000");
   connectDB()
-    .then(() => {
+    .then(async () => {
       logger.info("Connected to MongoDB");
+
+      // connect to kafka producer
+      await initiateBroker();
+
+      // consumer from kafka remove this later
+      initiateConsumer();
     })
     .catch((err) => {
       logger.error(err);

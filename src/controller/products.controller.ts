@@ -1,3 +1,8 @@
+import {
+  NotAuthorizedError,
+  NotFoundError,
+  publish,
+} from "@soundspheree/common";
 import { Request, Response } from "express";
 import {
   CreateProductInput,
@@ -10,20 +15,34 @@ import {
   findProducts,
   updateProduct,
 } from "../service/products.service";
-import { NotAuthorizedError, NotFoundError } from "@soundspheree/common";
+import { ProductEvent, ProductKafkaConfig } from "../types";
 
 export const createProductsHandler = async (
   req: Request<unknown, unknown, CreateProductInput>,
   res: Response
 ) => {
-  const product = await createProduct({
-    ...req.body,
-    userId: req?.currentUser!.id,
-  });
-  res.status(201).send({
-    message: "product created",
-    data: product,
-  });
+  try {
+    const product = await createProduct({
+      ...req.body,
+      userId: req?.currentUser!.id,
+    });
+
+    // publish to kafka
+    await publish({
+      topic: ProductKafkaConfig.PRODUCT_TOPIC,
+      event: ProductEvent.PRODUCT_CREATED,
+      message: {
+        id: product._id,
+      },
+    });
+
+    res.status(201).send({
+      message: "product created",
+      data: product,
+    });
+  } catch (error) {
+    throw new Error("Error creating product");
+  }
 };
 
 export const findProductHandler = async (
