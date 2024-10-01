@@ -67,7 +67,7 @@ ProductSchema.statics.build = (attrs: ProductAttrs) => {
 };
 
 const Product = mongoose.model<ProductDoc, ProductModel>(
-  "Ticket",
+  "product",
   ProductSchema
 );
 export { Product };

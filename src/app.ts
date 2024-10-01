@@ -12,7 +12,14 @@ import cors from "cors";
 import { config } from "dotenv";
 import { productsRouter } from "./routes/products.routes";
 
-config({ path: `.env.${process.env.NODE_ENV}` });
+// add the cron
+// import "./cron/publish-failed-events";
+
+if (process.env.NODE_ENV === "test") {
+  config({ path: `.env.${process.env.NODE_ENV}` });
+} else {
+  config();
+}
 
 // create express app
 const app = express();

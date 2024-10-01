@@ -1,16 +1,17 @@
-import { MongoMemoryServer } from "mongodb-memory-server";
-import mongoose from "mongoose";
-import { app } from "../app";
-import request from "supertest";
 import jwt from "jsonwebtoken";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
+import mongoose from "mongoose";
 
 declare global {
   var signin: () => [`session=${string}`];
 }
 
-let mongo: MongoMemoryServer;
+jest.mock("../message-broker/events/publisher/product-created-publisher");
+jest.mock("kafkajs");
+
+let mongo: MongoMemoryReplSet;
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await MongoMemoryReplSet.create({ replSet: { count: 4 } });
   const mongoUri = await mongo.getUri();
 
   await mongoose.connect(mongoUri, {});

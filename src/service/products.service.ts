@@ -1,15 +1,16 @@
-import { FilterQuery, QueryOptions, UpdateQuery } from "mongoose";
+import mongoose, { FilterQuery, QueryOptions, UpdateQuery } from "mongoose";
 import {
   Product,
-  type ProductDoc,
   type ProductAttrs,
+  type ProductDoc,
 } from "../model/products.model";
 
 export const createProduct = async (
-  attrs: ProductAttrs
+  attrs: ProductAttrs,
+  session?: mongoose.mongo.ClientSession
 ): Promise<ProductDoc> => {
   const product = Product.build(attrs);
-  await product.save();
+  await product.save({ session });
   return product;
 };
 

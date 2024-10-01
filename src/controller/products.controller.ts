@@ -1,47 +1,100 @@
 import {
+  logger,
   NotAuthorizedError,
   NotFoundError,
-  publish,
+  PublishType,
+  RequestFailureError,
 } from "@soundspheree/common";
 import { Request, Response } from "express";
+import mongoose from "mongoose";
+import { ProductCreatedProducer } from "../message-broker/events/publisher/product-created-publisher";
+import { kafkaClient } from "../message-broker/kakfa-wrapper";
 import {
   CreateProductInput,
   FindProductInput,
   UpdateProductInput,
 } from "../scheme/products.schema";
+import { createEvent } from "../service/events.service";
 import {
   createProduct,
   findProductById,
   findProducts,
   updateProduct,
 } from "../service/products.service";
-import { ProductEvent, ProductKafkaConfig } from "../types";
+import { ProductDataType, ProductEvent, ProductKafkaConfig } from "../types";
+
+type ProductPublishType = PublishType<
+  ProductEvent.PRODUCT_CREATED,
+  ProductKafkaConfig.PRODUCT_TOPIC,
+  ProductDataType
+>;
 
 export const createProductsHandler = async (
   req: Request<unknown, unknown, CreateProductInput>,
   res: Response
 ) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    const product = await createProduct({
-      ...req.body,
-      userId: req?.currentUser!.id,
-    });
+    // save product
+    const product = await createProduct(
+      {
+        ...req.body,
+        userId: req?.currentUser!.id,
+      },
+      session
+    );
 
-    // publish to kafka
-    await publish({
+    const event: ProductPublishType = {
       topic: ProductKafkaConfig.PRODUCT_TOPIC,
       event: ProductEvent.PRODUCT_CREATED,
       message: {
-        id: product._id,
+        id: product.id,
+        price: product.price,
+        title: product.title,
       },
-    });
+    };
+
+    // save event to mongodb
+    const productCreatedEvent = await createEvent(
+      {
+        ...event,
+        status: "failed",
+      },
+      session
+    );
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // publish to kafka
+    try {
+      await new ProductCreatedProducer(kafkaClient).publish({
+        event: ProductEvent.PRODUCT_CREATED,
+        message: {
+          id: product.id,
+          title: product.title,
+          price: product.price,
+        },
+        topic: ProductKafkaConfig.PRODUCT_TOPIC,
+      });
+      productCreatedEvent.status = "success";
+    } catch (error) {
+      productCreatedEvent.status = "failed";
+      logger.error("Error publishing product created event:", error);
+    } finally {
+      await productCreatedEvent.save();
+    }
 
     res.status(201).send({
       message: "product created",
       data: product,
     });
   } catch (error) {
-    throw new Error("Error creating product");
+    await session.abortTransaction();
+    session.endSession();
+    throw new RequestFailureError("Failed to create product", 500);
   }
 };
 

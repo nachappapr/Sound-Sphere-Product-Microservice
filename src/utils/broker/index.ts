@@ -1,26 +1,6 @@
-import {
-  connectConsumer,
-  connectProducer,
-  logger,
-  subscribe,
-} from "@soundspheree/common";
-
-import { type Consumer, type Producer } from "kafkajs";
+import { connectConsumer, logger, subscribe } from "@soundspheree/common";
+import { type Consumer } from "kafkajs";
 import { ProductKafkaConfig } from "../../types";
-
-export const initiateBroker = async () => {
-  // connect to kafka producer
-  const client = await connectProducer<
-    Producer,
-    ProductKafkaConfig.PRODUCT_TOPIC
-  >([ProductKafkaConfig.PRODUCT_TOPIC]);
-  client.on("producer.connect", async () => {
-    logger.info("Connected to Kafka Producer");
-  });
-  client.on("producer.disconnect", async () => {
-    logger.info("Disconnected from Kafka Producer");
-  });
-};
 
 export const initiateConsumer = async () => {
   // consumer from kafka
@@ -33,7 +13,7 @@ export const initiateConsumer = async () => {
 
   await subscribe(
     async (message) => {
-      console.log(message, "messagea");
+      console.log(message);
     },
     ProductKafkaConfig.PRODUCT_TOPIC,
     ProductKafkaConfig.PRODUCT_GROUP
