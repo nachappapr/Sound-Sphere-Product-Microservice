@@ -22,6 +22,7 @@ import {
   updateProduct,
 } from "../service/products.service";
 import { ProductDataType, ProductEvent, ProductKafkaConfig } from "../types";
+import { invalidateCache, setCache } from "../utils/redis-client";
 
 type ProductPublishType = PublishType<
   ProductEvent.PRODUCT_CREATED,
@@ -44,6 +45,10 @@ export const createProductsHandler = async (
       },
       session
     );
+
+    // invalidate cache
+    await invalidateCache(`product-${product.id}`);
+    await invalidateCache(`products-all`);
 
     const event: ProductPublishType = {
       topic: ProductKafkaConfig.PRODUCT_TOPIC,
@@ -103,11 +108,16 @@ export const findProductHandler = async (
   res: Response
 ) => {
   const { id } = req.params;
+
   const product = await findProductById(id);
 
   if (!product) {
     throw new NotFoundError();
   }
+
+  // Store the product in cache with expiration time
+  // by default expiration time is 1hourt
+  await setCache(`product-${id}`, JSON.stringify(product));
 
   res.status(200).send({
     message: "product details",
@@ -117,6 +127,10 @@ export const findProductHandler = async (
 
 export const findProductsHandler = async (req: Request, res: Response) => {
   const products = await findProducts();
+
+  // Store the product in cache with expiration time
+  // by default expiration time is 1hourt
+  await setCache(`products-all`, JSON.stringify(products));
 
   res.status(200).send({
     message: "products details",
@@ -145,6 +159,10 @@ export const updateProductsHandler = async (
     new: true,
     runValidators: true,
   });
+
+  // invalidate cache
+  await invalidateCache(`product-${updatedProduct?.id}`);
+  await invalidateCache(`products-all`);
 
   res.status(200).send({
     message: "product updated",

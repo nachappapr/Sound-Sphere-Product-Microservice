@@ -30,7 +30,7 @@ export const FindProductSchema = object({
 });
 
 export const UpdateProductSchema = object({
-  body: ProductSchema,
+  body: ProductSchema.partial(),
   params: object({
     id: z.string({ required_error: "Id is required" }),
   }),
