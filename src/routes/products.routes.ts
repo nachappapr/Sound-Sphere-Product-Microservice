@@ -15,6 +15,11 @@ import {
 
 const router = express.Router();
 
+// GET /api/products/health
+router.get("/health", (req, res) => {
+  res.send("OK");
+});
+
 // POST /api/products
 router.post(
   "/",

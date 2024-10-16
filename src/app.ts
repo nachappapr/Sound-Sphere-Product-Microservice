@@ -42,10 +42,6 @@ app.use(morganMiddleware);
 app.use(currentUser);
 
 // express middleware to handle routes
-app.get("/api/products/health", (req, res) => {
-  res.send("OK");
-});
-
 app.use("/api/products", productsRouter);
 
 app.all("*", async () => {
