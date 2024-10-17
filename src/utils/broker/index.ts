@@ -7,6 +7,7 @@ export const initiateConsumer = async () => {
   const consumer = await connectConsumer<Consumer>(
     ProductKafkaConfig.PRODUCT_TOPIC
   );
+
   consumer.on("consumer.connect", async () => {
     logger.info("Connected to Kafka Consumer");
   });
